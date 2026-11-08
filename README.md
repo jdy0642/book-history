@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 📚 책 읽어준 날
 
-## Getting Started
+아이에게 읽어준 책을 기록하는 앱. 전체 계획은 [PLAN.md](PLAN.md) 참고.
 
-First, run the development server:
+- Next.js 15 (App Router, TypeScript) + Tailwind CSS 4
+- Supabase (PostgreSQL, 인증, RLS)
+- Vercel 배포 예정
+
+## 로컬 실행
+
+Node 20 이상이 필요합니다 (`.nvmrc` = 22).
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+nvm use
+npm install
+cp .env.example .env.local   # 값 채우기 (아래 참고)
+npm run dev                  # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+홈 화면에 Supabase 연결 상태가 표시됩니다.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Supabase 연결하기
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. https://supabase.com 에서 프로젝트 생성 (리전: Northeast Asia (Seoul) 추천)
+2. **Project Settings → API** 에서 `Project URL`, `Publishable key` 를 `.env.local` 에 넣기
+3. **SQL Editor** 에서 `supabase/migrations/20261108000000_init.sql` 내용을 붙여넣고 실행
+4. `npm run dev` 재시작 → 홈에 "✅ Supabase 연결 및 DB 테이블 확인 완료" 가 보이면 성공
 
-## Learn More
+## Vercel 배포하기
 
-To learn more about Next.js, take a look at the following resources:
+1. 이 저장소를 GitHub 에 올리기
+2. https://vercel.com 에서 **Add New → Project** 로 저장소 가져오기
+3. **Environment Variables** 에 `.env.local` 과 같은 값 입력 → Deploy
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 폴더 구조
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+src/
+  app/                 화면 (App Router)
+  lib/supabase/        Supabase 클라이언트 (브라우저 / 서버 / 미들웨어)
+  middleware.ts        요청마다 로그인 세션 갱신
+supabase/migrations/   DB 스키마 + RLS 정책
+```
 
-## Deploy on Vercel
+## 데이터 보호 원칙
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+`family_id` 가 붙은 모든 데이터는 같은 가족 구성원만 읽고 쓸 수 있도록 DB 의 RLS 로 강제합니다.
+가족 생성·초대 수락은 RPC(`create_family`, `accept_family_invite`) 로만 가능합니다.
