@@ -48,3 +48,8 @@ description: Run book-history (Next.js + Supabase) locally and drive the login â
 - Invite links: create one on `/family`, read it via `navigator.clipboard.readText()`
   (context needs `permissions: ["clipboard-read", "clipboard-write"]`). Print new test-user emails *before* the steps
   that might fail, so they can be cleaned up.
+- Barcode scan: launch Chrome with `--use-fake-device-for-media-stream --use-file-for-fake-video-capture=<file>.y4m
+  --use-fake-ui-for-media-stream` and context `permissions: ["camera"]` (localhost counts as secure). No ffmpeg â€” write
+  the y4m in Python (EAN-13 bars into the Y plane, U/V = 128). Test the zxing fallback (iPhone path) with
+  `addInitScript(() => { delete window.BarcodeDetector })`; camera denied with `--deny-permission-prompts`. Wrap
+  `getUserMedia` in an init script to collect tracks and check `readyState === "ended"` after closing.
