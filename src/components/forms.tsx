@@ -11,19 +11,22 @@ export function LogoutButton() {
   );
 }
 
-/** hidden id 를 실어 서버 액션을 부르는 "삭제" 버튼 */
+/** hidden id 를 실어 서버 액션을 부르는 "삭제" 버튼 (next: 삭제 후 이동할 화면, 액션이 지원할 때만) */
 export function DeleteButton({
   action,
   id,
   label,
+  next,
 }: {
   action: (formData: FormData) => Promise<void>;
   id: string;
   label: string;
+  next?: string;
 }) {
   return (
     <form action={action}>
       <input type="hidden" name="id" value={id} />
+      {next && <input type="hidden" name="next" value={next} />}
       <button type="submit" className="px-2 text-sm text-muted" aria-label={label}>
         삭제
       </button>

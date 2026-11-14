@@ -13,3 +13,10 @@ export const cardClass = "rounded-xl border border-foreground/10 px-4 py-3";
 
 /** 카드 모양의 라디오/체크박스 선택지 (선택되면 강조) */
 export const optionCardClass = `${cardClass} flex cursor-pointer items-center gap-3 has-[:checked]:border-accent has-[:checked]:bg-accent/10`;
+
+export const emptyStateClass = "rounded-xl bg-foreground/5 px-4 py-6 text-center text-sm text-muted";
+
+/** 두 개 이상의 선택지를 붙여 놓은 탭 (로그인/회원가입, 책장 정렬 등) */
+export const segmentedClass = "grid grid-cols-2 rounded-xl bg-foreground/5 p-1 text-sm font-medium";
+export const segmentClass = (active: boolean) =>
+  `rounded-lg py-2 text-center ${active ? "bg-background shadow-sm" : "text-muted"}`;

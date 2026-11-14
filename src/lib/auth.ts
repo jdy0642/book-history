@@ -1,6 +1,6 @@
 import "server-only";
 import { redirect } from "next/navigation";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 
@@ -47,10 +47,18 @@ export function isOnboarded(family: Family | null): family is Family {
   return Boolean(family && family.children.length > 0);
 }
 
-/** 온보딩을 마친 사용자만 통과. 아니면 /onboarding 으로 보낸다. */
-export async function requireFamily() {
+/**
+ * 온보딩을 마친 사용자만 통과. 아니면 /onboarding 으로 보낸다.
+ * load 를 주면 가족 조회와 동시에 실행해서 결과를 data 로 돌려준다 (왕복 1번 절약).
+ */
+export async function requireFamily<T = undefined>(
+  load?: (supabase: SupabaseClient, user: User) => Promise<T>,
+) {
   const { supabase, user } = await requireUser();
-  const family = await getMyFamily(supabase);
+  const [family, data] = await Promise.all([
+    getMyFamily(supabase),
+    load ? load(supabase, user) : (undefined as T),
+  ]);
   if (!isOnboarded(family)) redirect("/onboarding");
-  return { supabase, user, family };
+  return { supabase, user, family, data };
 }

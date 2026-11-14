@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getMyFamily, requireUser } from "@/lib/auth";
+import { isMonthString } from "@/lib/date";
 import { friendlyDbError } from "@/lib/errors";
 import type { FormState } from "@/lib/form";
 import { createClient } from "@/lib/supabase/server";
@@ -30,7 +31,7 @@ export async function addChild(_prev: FormState, formData: FormData): Promise<Fo
   });
 
   if (!nickname || nickname.length > 20) return fail("아이 이름(별명)을 1~20자로 입력해 주세요.");
-  if (birthMonth && !/^\d{4}-(0[1-9]|1[0-2])$/.test(birthMonth)) {
+  if (birthMonth && !isMonthString(birthMonth)) {
     return fail("생년월 형식이 올바르지 않아요.");
   }
 

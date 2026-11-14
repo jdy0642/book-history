@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { FormMessage, SubmitButton } from "@/components/ui";
-import { inputClass } from "@/components/styles";
+import { inputClass, segmentClass, segmentedClass } from "@/components/styles";
 import { login, signup } from "./actions";
 
 type Mode = "login" | "signup";
@@ -12,7 +12,7 @@ export function AuthForm({ initialError }: { initialError?: string }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div role="tablist" className="grid grid-cols-2 rounded-xl bg-foreground/5 p-1 text-sm font-medium">
+      <div role="tablist" className={segmentedClass}>
         {(["login", "signup"] as const).map((m) => (
           <button
             key={m}
@@ -20,7 +20,7 @@ export function AuthForm({ initialError }: { initialError?: string }) {
             role="tab"
             aria-selected={mode === m}
             onClick={() => setMode(m)}
-            className={`rounded-lg py-2 ${mode === m ? "bg-background shadow-sm" : "text-muted"}`}
+            className={segmentClass(mode === m)}
           >
             {m === "login" ? "로그인" : "회원가입"}
           </button>

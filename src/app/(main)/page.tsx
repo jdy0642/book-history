@@ -1,30 +1,26 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { DeleteButton, LogoutButton } from "@/components/forms";
-import { cardClass } from "@/components/styles";
+import { LogoutButton } from "@/components/forms";
+import { LogItem } from "@/components/log-item";
+import { cardClass, emptyStateClass } from "@/components/styles";
 import { SubmitButton } from "@/components/ui";
-import { getMyFamily, isOnboarded, requireUser } from "@/lib/auth";
+import { requireFamily } from "@/lib/auth";
 import { todayKST } from "@/lib/date";
-import { getFamilyNames, getRecentLogs, recentBooks } from "@/lib/logs";
-import { REACTIONS } from "@/lib/reactions";
-import { deleteLog, quickLog } from "./log/actions";
+import { getFamilyNames, getRecentLogs, getStats, recentBooks } from "@/lib/logs";
+import { quickLog } from "../log/actions";
 
 export default async function Home() {
-  const { supabase, user } = await requireUser();
-
-  // 서로 독립적인 조회라 동시에 (기록은 RLS 로 내 가족 것만 보인다)
-  const [family, logs, names] = await Promise.all([
-    getMyFamily(supabase),
-    getRecentLogs(supabase),
-    getFamilyNames(supabase),
-  ]);
-  if (!isOnboarded(family)) redirect("/onboarding");
-
   const today = todayKST();
+  // 가족 조회와 동시에 (기록은 RLS 로 내 가족 것만 보인다)
+  const {
+    user,
+    family,
+    data: [logs, names, stats],
+  } = await requireFamily((supabase) =>
+    Promise.all([getRecentLogs(supabase), getFamilyNames(supabase), getStats(supabase, today)]),
+  );
+
   const todayLogs = logs.filter((log) => log.read_on === today);
   const rereadBooks = recentBooks(logs, 6);
-
-  const childName = new Map(family.children.map((c) => [c.id, c.nickname]));
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-8 px-4 py-6">
@@ -35,6 +31,19 @@ export default async function Home() {
         </div>
         <LogoutButton />
       </header>
+
+      <dl className="grid grid-cols-3 gap-2 text-center">
+        {[
+          ["지금까지", `${stats.total}권`],
+          ["이번 달", `${stats.thisMonth}권`],
+          ["연속 기록", stats.streak ? `🔥 ${stats.streak}일` : "0일"],
+        ].map(([label, value]) => (
+          <div key={label} className="rounded-xl bg-foreground/5 py-3">
+            <dt className="text-xs text-muted">{label}</dt>
+            <dd className="mt-1 text-lg font-bold">{value}</dd>
+          </div>
+        ))}
+      </dl>
 
       <Link
         href="/log/new"
@@ -48,31 +57,13 @@ export default async function Home() {
           오늘 읽은 책 <span className="text-accent">{todayLogs.length}권</span>
         </h2>
         {todayLogs.length === 0 ? (
-          <p className="rounded-xl bg-foreground/5 px-4 py-6 text-center text-sm text-muted">
+          <p className={emptyStateClass}>
             아직 기록이 없어요. 오늘은 어떤 책을 읽어줄까요?
           </p>
         ) : (
           <ul className="flex flex-col gap-2">
             {todayLogs.map((log) => (
-              <li
-                key={log.id}
-                className={`${cardClass} flex items-start justify-between gap-3`}
-              >
-                <div className="min-w-0">
-                  <p className="truncate font-medium">
-                    {log.reaction && <span className="mr-1">{REACTIONS[log.reaction]}</span>}
-                    {log.book.title}
-                  </p>
-                  <p className="text-sm text-muted">
-                    {log.child_ids.map((id) => childName.get(id)).filter(Boolean).join(", ")}
-                    {log.reader_user_id && names.has(log.reader_user_id) && (
-                      <> · 읽어준 사람: {names.get(log.reader_user_id)}</>
-                    )}
-                  </p>
-                  {log.memo && <p className="mt-1 text-sm">{log.memo}</p>}
-                </div>
-                <DeleteButton action={deleteLog} id={log.id} label={`${log.book.title} 기록 삭제`} />
-              </li>
+              <LogItem key={log.id} log={log} familyChildren={family.children} readerNames={names} />
             ))}
           </ul>
         )}
