@@ -5,6 +5,9 @@ import type { Reaction } from "@/lib/reactions";
 
 export type Book = { id: string; title: string; authors: string[]; cover_url: string | null };
 
+/** 저장 전 책 정보 (id 없음) */
+export type BookInfo = Omit<Book, "id">;
+
 export type ReadingLog = {
   id: string;
   read_on: string;

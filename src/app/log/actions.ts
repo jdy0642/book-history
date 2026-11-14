@@ -7,65 +7,108 @@ import { requireFamily, requireUser } from "@/lib/auth";
 import { historyHref, isDateString, todayKST } from "@/lib/date";
 import { friendlyDbError } from "@/lib/errors";
 import type { FormState } from "@/lib/form";
+import { searchKakaoBooks, type KakaoBook, type PickedBook } from "@/lib/kakao";
 import { isReaction } from "@/lib/reactions";
 import { createClient } from "@/lib/supabase/server";
+
+type BookResult = { id: string; error?: never } | { id?: never; error: string };
+
+const saveBookFail = (error: PostgrestError): BookResult => ({
+  error: friendlyDbError("책을 저장하지 못했어요", error),
+});
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** 기록이 바뀌면 홈·달력·책장 모두 다시 그린다 */
 function revalidateAll() {
   revalidatePath("/", "layout");
 }
 
-/** 직접 입력한 책: 내가 같은 제목·저자로 입력한 책이 이미 있으면 재사용 */
-async function findOrCreateManualBook(
+/** 조건에 맞는 책이 이미 있으면 그 id, 없으면 새로 저장 (직접 입력 책 / ISBN 을 믿을 수 없는 카카오 책) */
+async function findOrInsertBook(
   supabase: SupabaseClient,
-  userId: string,
-  title: string,
-  authors: string[],
-): Promise<{ id: string; error?: never } | { id?: never; error: PostgrestError }> {
-  const { data: candidates, error: findError } = await supabase
-    .from("books")
-    .select("id, authors")
-    .eq("source", "manual")
-    .eq("created_by", userId) // 남이 입력한 책은 그 사람이 제목을 고칠 수 있어 재사용하지 않는다
-    .eq("title", title)
-    .limit(10);
-  if (findError) return { error: findError };
+  match: Record<string, string | null>,
+  row: Record<string, unknown>,
+  isSame: (found: Record<string, unknown>) => boolean = () => true,
+): Promise<BookResult> {
+  let query = supabase.from("books").select("id, authors");
+  for (const [column, value] of Object.entries(match)) {
+    query = value === null ? query.is(column, null) : query.eq(column, value);
+  }
+  const { data: candidates, error: findError } = await query.limit(10);
+  if (findError) return saveBookFail(findError);
 
-  const key = authors.join("|");
-  const existing = candidates?.find((b) => (b.authors as string[]).join("|") === key);
+  const existing = candidates?.find(isSame);
   if (existing) return { id: existing.id as string };
 
-  const { data, error } = await supabase
-    .from("books")
-    .insert({ title, authors, source: "manual" })
-    .select("id")
-    .single();
-  if (error) return { error };
+  const { data, error } = await supabase.from("books").insert(row).select("id").single();
+  if (error) return saveBookFail(error);
   return { id: data.id as string };
 }
 
-/** 기록 + 아이 연결을 저장. 아이 연결이 실패하면 기록도 지운다 */
+/**
+ * 카카오에서 고른 책을 ISBN 으로 카카오에 다시 조회한다.
+ * 브라우저가 보낸 값은 믿지 않는다 (책 정보는 모든 가족이 같이 쓰므로, 조작된 값이 들어가지 않게).
+ * 일부 출판사는 임시 ISBN(예: 1234567890123)을 여러 책에 같이 쓰므로
+ * 고른 제목과 같은 책을 찾고, 그 ISBN 에 서로 다른 책이 여러 권인지(ambiguous)도 알려준다.
+ */
+async function lookupKakaoBook(
+  picked: Pick<PickedBook, "isbn" | "title">,
+): Promise<{ book: KakaoBook; ambiguous: boolean } | { error: string }> {
+  if (!/^\d{10}(\d{3})?$/.test(picked.isbn)) return { error: "고른 책의 정보가 올바르지 않아요." };
+  let matches;
+  try {
+    matches = (await searchKakaoBooks(picked.isbn, { target: "isbn", size: 50 })).filter(
+      (b) => b.isbn === picked.isbn,
+    );
+  } catch {
+    return { error: "책 정보를 가져오지 못했어요. 잠시 후 다시 시도해 주세요." };
+  }
+  const book = matches.find((b) => b.title === picked.title);
+  if (!book) return { error: "고른 책을 카카오에서 찾을 수 없어요. 다시 검색해 주세요." };
+  return { book, ambiguous: new Set(matches.map((b) => `${b.title}|${b.publisher}`)).size > 1 };
+}
+
+/** 카카오 책 저장: ISBN 을 믿을 수 있으면 ISBN 으로, 아니면 ISBN 없이 "제목 + 출판사"로 재사용·저장 */
+async function saveKakaoBook(
+  supabase: SupabaseClient,
+  { book, ambiguous }: { book: KakaoBook; ambiguous: boolean },
+): Promise<BookResult> {
+  if (ambiguous) {
+    return findOrInsertBook(
+      supabase,
+      { source: "kakao", isbn: null, title: book.title, publisher: book.publisher },
+      { title: book.title, authors: book.authors, publisher: book.publisher, cover_url: book.cover_url, source: "kakao" },
+    );
+  }
+  const { data, error } = await supabase.rpc("upsert_kakao_book", {
+    p_isbn: book.isbn,
+    p_title: book.title,
+    p_authors: book.authors,
+    p_publisher: book.publisher,
+    p_cover_url: book.cover_url,
+  });
+  if (error) return saveBookFail(error);
+  return { id: data as string };
+}
+
+/** 기록 + 읽어준 아이를 한 번에 저장 (DB 함수가 한 트랜잭션으로 처리) */
 async function insertLog(
   supabase: SupabaseClient,
-  log: {
-    family_id: string;
-    book_id: string;
-    read_on: string;
-    memo?: string | null;
-    reaction?: string | null;
-  },
+  familyId: string,
+  bookId: string,
   childIds: string[],
-): Promise<PostgrestError | undefined> {
-  const { data, error } = await supabase.from("reading_logs").insert(log).select("id").single();
-  if (error) return error;
-
-  const { error: linkError } = await supabase
-    .from("reading_log_children")
-    .insert(childIds.map((child_id) => ({ reading_log_id: data.id, child_id })));
-  if (linkError) {
-    await supabase.from("reading_logs").delete().eq("id", data.id);
-    return linkError;
-  }
+  details: { readOn: string; memo?: string | null; reaction?: string | null },
+): Promise<PostgrestError | null> {
+  const { error } = await supabase.rpc("create_reading_log", {
+    p_family_id: familyId,
+    p_book_id: bookId,
+    p_read_on: details.readOn,
+    p_child_ids: childIds,
+    p_memo: details.memo ?? null,
+    p_reaction: details.reaction ?? null,
+  });
+  return error;
 }
 
 /** 기록 추가·수정 폼의 공통 항목 (날짜·아이·반응·메모) 검사 */
@@ -85,93 +128,84 @@ function parseDetails(formData: FormData) {
   return { readOn, childIds, reaction: reaction || null, memo: memo || null, values, error };
 }
 
+function parsePickedBook(raw: string): PickedBook | null {
+  try {
+    const book = JSON.parse(raw) as PickedBook;
+    return typeof book?.isbn === "string" && typeof book.title === "string" ? book : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function createLog(_prev: FormState, formData: FormData): Promise<FormState> {
+  // book_id: 최근 책의 id | "new"(직접 입력) | "kakao"(검색해서 고른 책, kakao_book 에 JSON)
   const bookId = String(formData.get("book_id") ?? "");
   const title = String(formData.get("title") ?? "").trim();
   const authorsText = String(formData.get("authors") ?? "").trim();
-  const isNewBook = !bookId || bookId === "new";
+  const kakaoBook = String(formData.get("kakao_book") ?? "");
   const details = parseDetails(formData);
 
+  // 에러 시 고른 책(검색 결과 포함)과 입력값을 그대로 돌려준다
   const fail = (error: string): FormState => ({
     error,
-    values: { ...details.values, book_id: bookId, title, authors: authorsText },
+    values: { ...details.values, book_id: bookId, title, authors: authorsText, kakao_book: kakaoBook },
   });
 
+  const isNewBook = !bookId || bookId === "new";
+  const picked = bookId === "kakao" ? parsePickedBook(kakaoBook) : null;
   if (isNewBook && (!title || title.length > 300)) return fail("책 제목을 입력해 주세요.");
+  if (bookId === "kakao" && !picked) return fail("검색한 책을 골라 주세요.");
   if (details.error) return fail(details.error);
 
-  const { supabase, user, family } = await requireFamily();
+  // 카카오 조회는 로그인·가족 확인과 상관없으니 동시에
+  const [{ supabase, user, family }, kakao] = await Promise.all([
+    requireFamily(),
+    picked ? lookupKakaoBook(picked) : null,
+  ]);
 
-  let finalBookId = bookId;
+  let book: BookResult;
   if (isNewBook) {
     const authors = authorsText.split(",").map((a) => a.trim()).filter(Boolean);
-    const book = await findOrCreateManualBook(supabase, user.id, title, authors);
-    if (book.error) return fail(friendlyDbError("책을 저장하지 못했어요", book.error));
-    finalBookId = book.id;
+    // 내가 같은 제목·저자로 입력한 책이 있으면 재사용 (남이 입력한 책은 그 사람이 제목을 고칠 수 있어 제외)
+    book = await findOrInsertBook(
+      supabase,
+      { source: "manual", created_by: user.id, title },
+      { title, authors, source: "manual" },
+      (found) => (found.authors as string[]).join("|") === authors.join("|"),
+    );
+  } else if (kakao) {
+    book = "error" in kakao ? { error: kakao.error } : await saveKakaoBook(supabase, kakao);
+  } else {
+    book = { id: bookId }; // 최근 책 (RLS 와 FK 가 유효성을 확인한다)
   }
+  if (book.id === undefined) return fail(book.error);
 
-  const error = await insertLog(
-    supabase,
-    {
-      family_id: family.id,
-      book_id: finalBookId,
-      read_on: details.readOn,
-      memo: details.memo,
-      reaction: details.reaction,
-    },
-    details.childIds,
-  );
+  const error = await insertLog(supabase, family.id, book.id, details.childIds, details);
   if (error) return fail(friendlyDbError("기록하지 못했어요", error));
 
   revalidateAll();
   redirect("/");
 }
 
-/** 기록 수정: 날짜·아이·반응·메모 (책은 바꾸지 않는다) */
+/** 기록 수정: 날짜·아이·반응·메모 (책은 바꾸지 않는다). DB 함수가 한 트랜잭션으로 처리 */
 export async function updateLog(_prev: FormState, formData: FormData): Promise<FormState> {
   const id = String(formData.get("id") ?? "");
   const details = parseDetails(formData);
   const fail = (error: string): FormState => ({ error, values: details.values });
 
-  if (!id) return fail("수정할 기록을 찾을 수 없어요.");
+  if (!UUID.test(id)) return fail("수정할 기록을 찾을 수 없어요.");
   if (details.error) return fail(details.error);
 
-  // 권한은 RLS 가 확인한다 (다른 가족의 기록은 조회되지 않는다)
+  // 권한은 RLS 가 확인한다 (다른 가족의 기록은 "없음"으로 처리된다)
   const { supabase } = await requireUser();
-
-  const [{ data: log, error: logError }, { data: current, error: findError }] = await Promise.all([
-    supabase.from("reading_logs").select("id").eq("id", id).maybeSingle(),
-    supabase.from("reading_log_children").select("child_id").eq("reading_log_id", id),
-  ]);
-  const readError = logError ?? findError;
-  if (readError) return fail(friendlyDbError("기록을 수정하지 못했어요", readError));
-  if (!log) return fail("수정할 기록을 찾을 수 없어요.");
-
-  // 순서: 아이 연결을 먼저 바꾸고(가장 실패하기 쉬운 단계), 성공했을 때만 날짜·반응·메모를 저장한다.
-  // 아이는 새로 고른 아이를 먼저 추가하고 빠진 아이를 나중에 지운다 (중간에 실패해도 아이가 0명이 되지 않게)
-  const before = new Set((current ?? []).map((c) => c.child_id as string));
-  const added = details.childIds.filter((c) => !before.has(c));
-  const removed = [...before].filter((c) => !details.childIds.includes(c));
-
-  if (added.length > 0) {
-    const { error: addError } = await supabase
-      .from("reading_log_children")
-      .insert(added.map((child_id) => ({ reading_log_id: id, child_id })));
-    if (addError) return fail(friendlyDbError("읽어준 아이를 바꾸지 못했어요", addError));
-  }
-  if (removed.length > 0) {
-    const { error: removeError } = await supabase
-      .from("reading_log_children")
-      .delete()
-      .eq("reading_log_id", id)
-      .in("child_id", removed);
-    if (removeError) return fail(friendlyDbError("읽어준 아이를 바꾸지 못했어요", removeError));
-  }
-
-  const { error } = await supabase
-    .from("reading_logs")
-    .update({ read_on: details.readOn, memo: details.memo, reaction: details.reaction })
-    .eq("id", id);
+  const { error } = await supabase.rpc("update_reading_log", {
+    p_id: id,
+    p_read_on: details.readOn,
+    p_child_ids: details.childIds,
+    p_memo: details.memo,
+    p_reaction: details.reaction,
+  });
+  if (error?.code === "P0002") return fail("수정할 기록을 찾을 수 없어요."); // 없는 기록이거나 다른 가족의 기록
   if (error) return fail(friendlyDbError("기록을 수정하지 못했어요", error));
 
   revalidateAll();
@@ -183,11 +217,7 @@ export async function quickLog(formData: FormData) {
   const bookId = String(formData.get("book_id") ?? "");
   if (!bookId) return;
   const { supabase, family } = await requireFamily();
-  await insertLog(
-    supabase,
-    { family_id: family.id, book_id: bookId, read_on: todayKST() },
-    family.children.map((c) => c.id),
-  );
+  await insertLog(supabase, family.id, bookId, family.children.map((c) => c.id), { readOn: todayKST() });
   revalidateAll();
 }
 

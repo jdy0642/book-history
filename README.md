@@ -23,8 +23,12 @@ npm run dev                  # http://localhost:3000
 
 1. https://supabase.com 에서 프로젝트 생성 (리전: Northeast Asia (Seoul) 추천)
 2. **Project Settings → API** 에서 `Project URL`, `Publishable key` 를 `.env.local` 에 넣기
-3. **SQL Editor** 에서 `supabase/migrations/20261108000000_init.sql` 내용을 붙여넣고 실행
-4. `npm run dev` 재시작 → 홈에 "✅ Supabase 연결 및 DB 테이블 확인 완료" 가 보이면 성공
+3. **SQL Editor** 에서 `supabase/migrations/` 의 SQL 을 **파일 이름 순서대로** 하나씩 붙여넣고 실행
+   - `20261108000000_init.sql` — 테이블 + RLS
+   - `20261115000000_log_rpcs_and_kakao_books.sql` — 기록 저장/수정 함수, 카카오 책 저장 함수
+4. 카카오 책 검색: https://developers.kakao.com 에서 앱을 만들고 **REST API 키**를 `.env.local` 의 `KAKAO_REST_API_KEY` 에 넣기
+   (Vercel 에는 Type 을 **Secret** 으로)
+5. `npm run dev` 재시작 → http://localhost:3000 에서 로그인 화면이 보이면 성공
 
 ## 이메일 로그인 설정 (Supabase 대시보드)
 
