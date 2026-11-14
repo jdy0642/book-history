@@ -2,13 +2,14 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { FormMessage, SubmitButton } from "@/components/ui";
-import { cardClass, inputClass, optionCardClass } from "@/components/styles";
+import { cardClass, inputClass, optionCardClass, smallSecondaryButtonClass } from "@/components/styles";
 import type { Child } from "@/lib/auth";
 import type { FormState } from "@/lib/form";
 import type { PickedBook } from "@/lib/kakao";
 import type { Book, ReadingLog } from "@/lib/logs";
 import { REACTIONS } from "@/lib/reactions";
 import { createLog, updateLog } from "./actions";
+import { BarcodeScanner } from "./barcode-scanner";
 
 const chipClass =
   "cursor-pointer rounded-full border border-foreground/15 px-4 py-2 text-sm has-[:checked]:border-accent has-[:checked]:bg-accent/10 has-[:checked]:font-semibold";
@@ -118,13 +119,42 @@ export function LogForm({
   );
 }
 
-/** 제목으로 카카오 책 검색 (입력을 멈추고 0.3초 뒤 검색) */
+async function searchBooks(q: string, signal?: AbortSignal): Promise<PickedBook[]> {
+  const res = await fetch(`/api/books/search?q=${encodeURIComponent(q)}`, { signal });
+  if (!res.ok) throw new Error();
+  return ((await res.json()) as { books: PickedBook[] }).books;
+}
+
+/** 제목(입력을 멈추고 0.3초 뒤) 또는 바코드로 카카오 책 검색 */
 function BookSearch({ onPick, autoFocus }: { onPick: (book: PickedBook) => void; autoFocus: boolean }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PickedBook[]>([]);
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [scanning, setScanning] = useState(false);
+  const [lookingUp, setLookingUp] = useState(false);
 
   const q = query.trim();
+
+  function choose(book: PickedBook) {
+    onPick(book);
+    setQuery("");
+  }
+
+  // 바코드는 입력이 끝난 값이라 기다리지 않고 바로 찾는다. 한 권이면 바로 고르고,
+  // 없거나 여러 권이면 검색창에 넣어 평소 검색처럼 안내·목록을 보여준다.
+  async function onScan(isbn: string) {
+    setScanning(false);
+    setLookingUp(true);
+    try {
+      const books = await searchBooks(isbn);
+      if (books.length === 1) return choose(books[0]);
+    } catch {
+      // 실패하면 아래 검색이 다시 시도하고 에러를 보여준다
+    } finally {
+      setLookingUp(false);
+    }
+    setQuery(isbn);
+  }
 
   useEffect(() => {
     if (!q) return; // 검색어가 없으면 아무것도 보여주지 않는다 (아래 렌더링에서 q 로 가린다)
@@ -132,9 +162,7 @@ function BookSearch({ onPick, autoFocus }: { onPick: (book: PickedBook) => void;
     const timer = setTimeout(async () => {
       setStatus("loading");
       try {
-        const res = await fetch(`/api/books/search?q=${encodeURIComponent(q)}`, { signal: controller.signal });
-        if (!res.ok) throw new Error();
-        setResults(((await res.json()) as { books: PickedBook[] }).books);
+        setResults(await searchBooks(q, controller.signal));
         setStatus("done");
       } catch {
         if (!controller.signal.aborted) setStatus("error");
@@ -148,16 +176,27 @@ function BookSearch({ onPick, autoFocus }: { onPick: (book: PickedBook) => void;
 
   return (
     <div className="flex flex-col gap-2">
-      <input
-        type="search"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && e.preventDefault()} // 검색창에서 엔터로 기록이 저장되지 않게
-        placeholder="🔍 책 제목으로 검색"
-        aria-label="책 제목으로 검색"
-        className={inputClass}
-        autoFocus={autoFocus}
-      />
+      <div className="flex gap-2">
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && e.preventDefault()} // 검색창에서 엔터로 기록이 저장되지 않게
+          placeholder="🔍 책 제목으로 검색"
+          aria-label="책 제목으로 검색"
+          className={`${inputClass} min-w-0 flex-1`}
+          autoFocus={autoFocus}
+        />
+        <button
+          type="button"
+          onClick={() => setScanning(true)}
+          className={`${smallSecondaryButtonClass} shrink-0 whitespace-nowrap`}
+        >
+          📷 바코드
+        </button>
+      </div>
+      {scanning && <BarcodeScanner onDetect={onScan} onClose={() => setScanning(false)} />}
+      {lookingUp && <p className="text-sm text-muted">바코드로 책을 찾는 중…</p>}
       {q && status === "loading" && <p className="text-sm text-muted">검색 중…</p>}
       {q && status === "error" && <FormMessage error="검색에 실패했어요. 잠시 후 다시 시도해 주세요." />}
       {q && status === "done" && results.length === 0 && (
@@ -169,10 +208,7 @@ function BookSearch({ onPick, autoFocus }: { onPick: (book: PickedBook) => void;
             <li key={book.isbn}>
               <button
                 type="button"
-                onClick={() => {
-                  onPick(book);
-                  setQuery("");
-                }}
+                onClick={() => choose(book)}
                 className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left hover:bg-accent/10"
               >
                 <Cover url={book.cover_url} />
