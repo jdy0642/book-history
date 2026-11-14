@@ -36,3 +36,8 @@ description: Run book-history (Next.js + Supabase) locally and drive the login �
   `waitForURL(u => u.href.includes("..."), { waitUntil: "commit" })` — glob patterns with `?query` don't match.
 - `/log/[id]/edit` has two forms (header delete + edit) → scope to `form:has(input[name=read_on])`.
 - Anonymous redirects can be checked with curl (`307 → /login`); everything behind login needs the browser.
+- Redirect / `next` probes: read the server's `Location` with the logged-in context —
+  `ctx.request.get(url, { maxRedirects: 0 })` — and try `/\evil.example` (browsers treat `\` as `/`).
+- Invite links: create one on `/family`, read it via `navigator.clipboard.readText()`
+  (context needs `permissions: ["clipboard-read", "clipboard-write"]`). Print new test-user emails *before* the steps
+  that might fail, so they can be cleaned up.
