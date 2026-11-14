@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 :root {
+  /* --accent / --background 는 src/lib/brand.ts (앱 아이콘·매니페스트) 와 같은 값으로 유지 */
   --background: #fffdf8;
   --foreground: #2b2118;
   --muted: #8a7a6a;

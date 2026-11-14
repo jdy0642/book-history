@@ -1,5 +1,6 @@
 import { ChildList } from "@/components/child-list";
 import { DeleteButton } from "@/components/forms";
+import { InstallCard } from "@/components/install-card";
 import { cardClass } from "@/components/styles";
 import { requireFamily } from "@/lib/auth";
 import { formatDateKo, toDateKST } from "@/lib/date";
@@ -26,6 +27,8 @@ export default async function FamilyPage() {
         <p className="text-sm text-muted">가족 관리</p>
         <h1 className="text-xl font-bold">{family.name}</h1>
       </header>
+
+      <InstallCard />
 
       <section className="flex flex-col gap-3">
         <h2 className="font-semibold">구성원 {members.length}명</h2>
