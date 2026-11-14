@@ -1,50 +1,56 @@
-import { isSupabaseConfigured } from "@/lib/supabase/env";
-import { createClient } from "@/lib/supabase/server";
-
-// 연결 상태는 요청마다 확인 (빌드 시점에 고정되지 않도록)
-export const dynamic = "force-dynamic";
-
-type Status ={ ok: boolean; message: string };
-
-async function checkSupabase(): Promise<Status> {
-  if (!isSupabaseConfigured) {
-    return {
-      ok: false,
-      message: ".env.local 에 Supabase URL / 키가 아직 없어요.",
-    };
-  }
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("books")
-    .select("id", { count: "exact", head: true });
-  if (error) {
-    return {
-      ok: false,
-      message: `연결은 됐지만 DB 확인 실패: ${error.message} (마이그레이션을 적용했나요?)`,
-    };
-  }
-  return { ok: true, message: "Supabase 연결 및 DB 테이블 확인 완료" };
-}
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getDisplayName, getMyFamily, requireUser } from "@/lib/auth";
+import { logout } from "./login/actions";
 
 export default async function Home() {
-  const status = await checkSupabase();
+  const { supabase, user } = await requireUser();
+
+  // 서로 독립적인 조회라 동시에
+  const [family, displayName] = await Promise.all([
+    getMyFamily(supabase),
+    getDisplayName(supabase, user.id),
+  ]);
+  if (!family || family.children.length === 0) redirect("/onboarding");
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-6 px-4 text-center">
-      <div className="text-6xl">📚</div>
-      <h1 className="text-3xl font-bold">책 읽어준 날</h1>
-      <p className="text-muted">아이에게 읽어준 책을 10초 만에 기록해요.</p>
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-8 px-4 py-6">
+      <header className="flex items-center justify-between">
+        <div>
+          <p className="text-sm text-muted">{family.name}</p>
+          <h1 className="text-xl font-bold">안녕하세요, {displayName}님 👋</h1>
+        </div>
+        <form action={logout}>
+          <button type="submit" className="text-sm text-muted">
+            로그아웃
+          </button>
+        </form>
+      </header>
 
-      <div
-        className={`w-full rounded-xl border px-4 py-3 text-sm ${
-          status.ok
-            ? "border-green-600/30 bg-green-600/10"
-            : "border-accent/30 bg-accent/10"
-        }`}
+      <button
+        type="button"
+        disabled
+        className="rounded-2xl bg-accent px-4 py-8 text-xl font-bold text-white opacity-60"
       >
-        {status.ok ? "✅ " : "⚠️ "}
-        {status.message}
-      </div>
+        + 책 읽었어요
+        <span className="mt-1 block text-sm font-normal">곧 추가돼요</span>
+      </button>
+
+      <section className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold">우리 아이</h2>
+          <Link href="/onboarding" className="text-sm text-accent">
+            관리
+          </Link>
+        </div>
+        <ul className="flex flex-wrap gap-2">
+          {family.children.map((child) => (
+            <li key={child.id} className="rounded-full bg-accent/10 px-4 py-2 text-sm font-medium">
+              {child.nickname}
+            </li>
+          ))}
+        </ul>
+      </section>
     </main>
   );
 }

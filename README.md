@@ -26,6 +26,21 @@ npm run dev                  # http://localhost:3000
 3. **SQL Editor** 에서 `supabase/migrations/20261108000000_init.sql` 내용을 붙여넣고 실행
 4. `npm run dev` 재시작 → 홈에 "✅ Supabase 연결 및 DB 테이블 확인 완료" 가 보이면 성공
 
+## 이메일 로그인 설정 (Supabase 대시보드)
+
+1. **Authentication → URL Configuration**
+   - Site URL: `https://book-history-two.vercel.app`
+   - Redirect URLs: `http://localhost:3000/**`, `https://book-history-two.vercel.app/**`
+2. (추천) **Authentication → Emails → Confirm signup** 템플릿의 링크를 아래로 바꾸면
+   가입한 브라우저가 아닌 곳(예: 폰 메일 앱)에서 링크를 열어도 확인된다.
+   ```html
+   <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/onboarding">가입 확인</a>
+   ```
+3. 개발 중 메일 확인을 건너뛰려면 **Authentication → Sign In / Providers → Email → Confirm email** 끄기
+   (공개 전에는 다시 켜기)
+
+화면 흐름: `/login` (로그인·회원가입) → `/onboarding` (가족 만들기 → 아이 등록) → `/` (홈)
+
 ## Vercel 배포하기
 
 1. 이 저장소를 GitHub 에 올리기

@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "책 읽어준 날",
+  title: { template: "%s · 책 읽어준 날", default: "책 읽어준 날" },
   description: "아이에게 읽어준 책을 기록하는 앱",
 };
 
