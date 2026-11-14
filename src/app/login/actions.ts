@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import type { AuthError } from "@supabase/supabase-js";
 import type { FormState } from "@/lib/form";
 import { createClient } from "@/lib/supabase/server";
+import { safeNext } from "@/lib/url";
 
 const ALREADY_REGISTERED = "이미 가입된 이메일이에요. 로그인해 주세요.";
 
@@ -41,13 +42,16 @@ export async function login(_prev: FormState, formData: FormData): Promise<FormS
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return fail(authErrorMessage(error));
 
-  redirect("/");
+  // next: 로그인 후 돌아갈 곳 (예: 초대 링크)
+  redirect(safeNext(formData.get("next") as string | null));
 }
 
 export async function signup(_prev: FormState, formData: FormData): Promise<FormState> {
   const name = String(formData.get("name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
+  // 가입 후 갈 곳: 초대 링크로 들어왔으면 초대 화면, 아니면 온보딩
+  const next = safeNext(formData.get("next") as string | null, "/onboarding");
   const fail = (error: string): FormState => ({ error, values: { name, email } });
 
   if (!name || name.length > 30) return fail("호칭을 1~30자로 입력해 주세요. (예: 아빠, 엄마)");
@@ -61,13 +65,13 @@ export async function signup(_prev: FormState, formData: FormData): Promise<Form
     password,
     options: {
       data: { name }, // DB 트리거가 profiles.display_name 으로 복사
-      emailRedirectTo: `${origin}/auth/confirm?next=/onboarding`,
+      emailRedirectTo: `${origin}/auth/confirm?next=${encodeURIComponent(next)}`,
     },
   });
   if (error) return fail(authErrorMessage(error));
 
   // 이메일 확인을 꺼둔 경우 바로 로그인된다
-  if (data.session) redirect("/onboarding");
+  if (data.session) redirect(next);
 
   // 이메일 확인이 켜져 있으면 이미 가입된 주소도 에러 없이 빈 identities 로 돌아온다
   if (data.user && data.user.identities?.length === 0) {

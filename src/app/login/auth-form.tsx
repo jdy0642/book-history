@@ -7,7 +7,7 @@ import { login, signup } from "./actions";
 
 type Mode = "login" | "signup";
 
-export function AuthForm({ initialError }: { initialError?: string }) {
+export function AuthForm({ initialError, next }: { initialError?: string; next?: string }) {
   const [mode, setMode] = useState<Mode>("login");
 
   return (
@@ -29,18 +29,19 @@ export function AuthForm({ initialError }: { initialError?: string }) {
 
       {/* key 로 탭 전환 시 폼 상태 초기화 */}
       {mode === "login" ? (
-        <LoginForm key="login" initialError={initialError} />
+        <LoginForm key="login" initialError={initialError} next={next} />
       ) : (
-        <SignupForm key="signup" />
+        <SignupForm key="signup" next={next} />
       )}
     </div>
   );
 }
 
-function LoginForm({ initialError }: { initialError?: string }) {
+function LoginForm({ initialError, next }: { initialError?: string; next?: string }) {
   const [state, action] = useActionState(login, initialError ? { error: initialError } : undefined);
   return (
     <form action={action} className="flex flex-col gap-3">
+      {next && <input type="hidden" name="next" value={next} />}
       <input
         name="email"
         type="email"
@@ -64,11 +65,12 @@ function LoginForm({ initialError }: { initialError?: string }) {
   );
 }
 
-function SignupForm() {
+function SignupForm({ next }: { next?: string }) {
   const [state, action] = useActionState(signup, undefined);
   if (state?.message) return <FormMessage message={state.message} />;
   return (
     <form action={action} className="flex flex-col gap-3">
+      {next && <input type="hidden" name="next" value={next} />}
       <input
         name="name"
         required

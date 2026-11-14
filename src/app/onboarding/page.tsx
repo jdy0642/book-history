@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { getMyFamily, requireUser } from "@/lib/auth";
-import { DeleteButton, LogoutButton } from "@/components/forms";
-import { buttonClass, cardClass } from "@/components/styles";
-import { deleteChild } from "./actions";
+import { ChildList } from "@/components/child-list";
+import { LogoutButton } from "@/components/forms";
+import { buttonClass, hintClass } from "@/components/styles";
 import { AddChildForm, CreateFamilyForm } from "./forms";
 
 export const metadata = { title: "시작하기" };
@@ -28,6 +28,9 @@ export default async function OnboardingPage() {
           <div>
             <h1 className="text-2xl font-bold">가족 이름을 정해 주세요</h1>
             <p className="mt-1 text-muted">나중에 배우자나 조부모님을 이 가족으로 초대할 수 있어요.</p>
+            <p className={`${hintClass} mt-3`}>
+              가족에게 <b>초대 링크</b>를 받았다면, 가족을 새로 만들지 말고 그 링크를 열어 주세요.
+            </p>
           </div>
           <CreateFamilyForm />
         </section>
@@ -39,24 +42,7 @@ export default async function OnboardingPage() {
             <p className="mt-1 text-muted">이름 대신 별명도 좋아요. 아이 정보는 최소한만 저장해요.</p>
           </div>
 
-          {children.length > 0 && (
-            <ul className="flex flex-col gap-2">
-              {children.map((child) => (
-                <li
-                  key={child.id}
-                  className={`${cardClass} flex items-center justify-between`}
-                >
-                  <span>
-                    <span className="font-medium">{child.nickname}</span>
-                    {child.birth_month && (
-                      <span className="ml-2 text-sm text-muted">{child.birth_month.replace("-", "년 ")}월생</span>
-                    )}
-                  </span>
-                  <DeleteButton action={deleteChild} id={child.id} label={`${child.nickname} 삭제`} />
-                </li>
-              ))}
-            </ul>
-          )}
+          <ChildList items={children} />
 
           <AddChildForm isFirst={children.length === 0} />
 

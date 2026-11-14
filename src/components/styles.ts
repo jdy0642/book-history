@@ -20,3 +20,10 @@ export const emptyStateClass = "rounded-xl bg-foreground/5 px-4 py-6 text-center
 export const segmentedClass = "grid grid-cols-2 rounded-xl bg-foreground/5 p-1 text-sm font-medium";
 export const segmentClass = (active: boolean) =>
   `rounded-lg py-2 text-center ${active ? "bg-background shadow-sm" : "text-muted"}`;
+
+/** 강조 안내 상자 (초대 안내 등) */
+export const hintClass = "rounded-xl bg-accent/10 px-4 py-3 text-sm";
+
+/** 카드 안에 들어가는 작은 버튼 */
+export const smallButtonClass = "rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-white";
+export const smallSecondaryButtonClass = "rounded-lg border border-foreground/15 px-3 py-1.5 text-sm";

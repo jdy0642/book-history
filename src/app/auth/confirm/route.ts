@@ -2,11 +2,7 @@ import { redirect } from "next/navigation";
 import type { NextRequest } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
-
-/** 외부 사이트로 튕기지 않도록 앱 내부 경로만 허용 */
-function safeNext(next: string | null) {
-  return next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
-}
+import { safeNext } from "@/lib/url";
 
 /**
  * 가입 확인 메일의 링크가 도착하는 곳.

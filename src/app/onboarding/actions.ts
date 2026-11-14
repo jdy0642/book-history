@@ -13,9 +13,8 @@ export async function createFamily(_prev: FormState, formData: FormData): Promis
   if (!name || name.length > 30) return fail("가족 이름을 1~30자로 입력해 주세요.");
 
   const { supabase } = await requireUser();
-  if (await getMyFamily(supabase)) return fail("이미 가족이 있어요.");
-
   const { error } = await supabase.rpc("create_family", { family_name: name });
+  if (error?.code === "P0003") return fail("이미 가족이 있어요."); // DB 가 "한 계정 한 가족"을 확인한다
   if (error) return fail(friendlyDbError("가족을 만들지 못했어요", error));
 
   revalidatePath("/", "layout");

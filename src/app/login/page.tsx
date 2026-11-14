@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/auth";
+import { hintClass } from "@/components/styles";
+import { safeNext } from "@/lib/url";
 import { AuthForm } from "./auth-form";
 
 export const metadata = { title: "로그인" };
@@ -7,12 +9,12 @@ export const metadata = { title: "로그인" };
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; next?: string }>;
 }) {
+  const params = await searchParams;
+  const next = params.next ? safeNext(params.next) : undefined;
   const { user } = await getUser();
-  if (user) redirect("/");
-
-  const { error } = await searchParams;
+  if (user) redirect(next ?? "/");
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-8 px-4 py-10">
@@ -22,9 +24,16 @@ export default async function LoginPage({
         <p className="mt-1 text-muted">아이에게 읽어준 책을 10초 만에 기록해요.</p>
       </header>
 
+      {next?.startsWith("/invite/") && (
+        <p className={`${hintClass} text-center`}>
+          가족 초대를 받았어요. 처음이면 <b>회원가입</b>, 계정이 있으면 로그인해 주세요.
+        </p>
+      )}
+
       <AuthForm
+        next={next}
         initialError={
-          error === "confirm"
+          params.error === "confirm"
             ? "확인 링크가 만료됐거나 올바르지 않아요. 다시 로그인하거나 가입해 주세요."
             : undefined
         }

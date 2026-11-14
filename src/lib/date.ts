@@ -3,9 +3,14 @@
 const DAY_MS = 86_400_000;
 export const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
-/** 한국 시간 기준 오늘 날짜 'YYYY-MM-DD' (서버는 UTC 로 돌기 때문에 직접 계산) */
+/** 시각(Date 또는 ISO 문자열)을 한국 날짜 'YYYY-MM-DD' 로 (서버는 UTC 로 돌기 때문에 직접 계산) */
+export function toDateKST(time: Date | string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date(time));
+}
+
+/** 한국 시간 기준 오늘 날짜 'YYYY-MM-DD' */
 export function todayKST(): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
+  return toDateKST(new Date());
 }
 
 function toTime(date: string): number {
@@ -47,6 +52,11 @@ export function monthDays(month: string): { days: string[]; firstWeekday: number
 export function formatDateKo(date: string): string {
   const [, m, d] = date.split("-").map(Number);
   return `${m}월 ${d}일 (${WEEKDAYS[new Date(toTime(date)).getUTCDay()]})`;
+}
+
+/** 생년월 '2022-03' → '2022년 3월생' */
+export function formatBirthMonth(month: string): string {
+  return `${formatMonthKo(month)}생`;
 }
 
 /** '2026-11' → '2026년 11월' */

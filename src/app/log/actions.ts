@@ -10,6 +10,7 @@ import type { FormState } from "@/lib/form";
 import { searchKakaoBooks, type KakaoBook, type PickedBook } from "@/lib/kakao";
 import { isReaction } from "@/lib/reactions";
 import { createClient } from "@/lib/supabase/server";
+import { safeNext } from "@/lib/url";
 
 type BookResult = { id: string; error?: never } | { id?: never; error: string };
 
@@ -230,6 +231,5 @@ export async function deleteLog(formData: FormData) {
   const supabase = await createClient();
   await supabase.from("reading_logs").delete().eq("id", id);
   revalidateAll();
-  // 앱 내부 경로만 허용 (외부 사이트로 보내지 않도록)
-  if (next.startsWith("/") && !next.startsWith("//")) redirect(next);
+  if (next) redirect(safeNext(next));
 }

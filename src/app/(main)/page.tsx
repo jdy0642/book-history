@@ -97,8 +97,8 @@ export default async function Home() {
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold">우리 아이</h2>
-          <Link href="/onboarding" className="text-sm text-accent">
-            관리
+          <Link href="/family" className="text-sm text-accent">
+            가족 관리 · 초대
           </Link>
         </div>
         <ul className="flex flex-wrap gap-2">
