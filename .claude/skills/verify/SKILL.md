@@ -32,3 +32,7 @@ description: Run book-history (Next.js + Supabase) locally and drive the login �
 - Tampering probes (editing hidden inputs / checkbox values in the DOM): `waitForLoadState("networkidle")` first —
   before hydration React silently restores the original values — and log `new FormData(form)` to prove what was sent.
 - After a server-action click, wait for the UI to change before closing the browser, or the request may be aborted.
+- Link clicks are client-side navigations (no `load` event): use
+  `waitForURL(u => u.href.includes("..."), { waitUntil: "commit" })` — glob patterns with `?query` don't match.
+- `/log/[id]/edit` has two forms (header delete + edit) → scope to `form:has(input[name=read_on])`.
+- Anonymous redirects can be checked with curl (`307 → /login`); everything behind login needs the browser.
