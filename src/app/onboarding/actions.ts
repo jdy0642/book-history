@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getMyFamily, requireFamily, requireUser } from "@/lib/auth";
+import { getMyFamily, requireUser } from "@/lib/auth";
+import { friendlyDbError } from "@/lib/errors";
 import type { FormState } from "@/lib/form";
 import { createClient } from "@/lib/supabase/server";
 
@@ -14,7 +15,7 @@ export async function createFamily(_prev: FormState, formData: FormData): Promis
   if (await getMyFamily(supabase)) return fail("이미 가족이 있어요.");
 
   const { error } = await supabase.rpc("create_family", { family_name: name });
-  if (error) return fail(`가족을 만들지 못했어요: ${error.message}`);
+  if (error) return fail(friendlyDbError("가족을 만들지 못했어요", error));
 
   revalidatePath("/", "layout");
   return undefined;
@@ -33,12 +34,15 @@ export async function addChild(_prev: FormState, formData: FormData): Promise<Fo
     return fail("생년월 형식이 올바르지 않아요.");
   }
 
-  const { supabase, family } = await requireFamily();
+  // 첫 아이 등록도 여기서 하므로 requireFamily(아이 1명 이상 필요) 대신 직접 확인
+  const { supabase } = await requireUser();
+  const family = await getMyFamily(supabase);
+  if (!family) return fail("가족을 먼저 만들어 주세요.");
 
   const { error } = await supabase
     .from("children")
     .insert({ family_id: family.id, nickname, birth_month: birthMonth });
-  if (error) return fail(`아이를 등록하지 못했어요: ${error.message}`);
+  if (error) return fail(friendlyDbError("아이를 등록하지 못했어요", error));
 
   revalidatePath("/", "layout");
   return undefined;

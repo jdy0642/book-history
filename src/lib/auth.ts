@@ -4,7 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 
-type Child = { id: string; nickname: string; birth_month: string | null };
+export type Child = { id: string; nickname: string; birth_month: string | null };
 type Family = { id: string; name: string; children: Child[] };
 
 /** 현재 로그인한 사용자 (없으면 null) */
@@ -42,19 +42,15 @@ export async function getMyFamily(supabase: SupabaseClient): Promise<Family | nu
   return data;
 }
 
-/** 가족이 있는 사용자만 통과. 아니면 /onboarding 으로 보낸다. */
+/** 온보딩(가족 + 아이 1명 이상)을 마쳤는지 */
+export function isOnboarded(family: Family | null): family is Family {
+  return Boolean(family && family.children.length > 0);
+}
+
+/** 온보딩을 마친 사용자만 통과. 아니면 /onboarding 으로 보낸다. */
 export async function requireFamily() {
   const { supabase, user } = await requireUser();
   const family = await getMyFamily(supabase);
-  if (!family) redirect("/onboarding");
+  if (!isOnboarded(family)) redirect("/onboarding");
   return { supabase, user, family };
-}
-
-export async function getDisplayName(supabase: SupabaseClient, userId: string) {
-  const { data } = await supabase
-    .from("profiles")
-    .select("display_name")
-    .eq("id", userId)
-    .maybeSingle();
-  return (data?.display_name as string | undefined) ?? "보호자";
 }

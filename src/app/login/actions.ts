@@ -25,7 +25,8 @@ function authErrorMessage(error: AuthError): string {
     case "over_request_rate_limit":
       return "요청이 너무 많아요. 잠시 후 다시 시도해 주세요.";
     default:
-      return `문제가 생겼어요: ${error.message}`;
+      console.error("[auth]", error.code, error.message);
+      return "문제가 생겼어요. 잠시 후 다시 시도해 주세요.";
   }
 }
 
