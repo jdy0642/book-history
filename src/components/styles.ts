@@ -8,3 +8,8 @@ export const buttonClass =
 
 export const secondaryButtonClass =
   "w-full rounded-xl border border-foreground/15 px-4 py-3 text-base font-medium disabled:opacity-60";
+
+export const cardClass = "rounded-xl border border-foreground/10 px-4 py-3";
+
+/** 카드 모양의 라디오/체크박스 선택지 (선택되면 강조) */
+export const optionCardClass = `${cardClass} flex cursor-pointer items-center gap-3 has-[:checked]:border-accent has-[:checked]:bg-accent/10`;

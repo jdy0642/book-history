@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getMyFamily, requireUser } from "@/lib/auth";
-import { buttonClass } from "@/components/styles";
+import { DeleteButton, LogoutButton } from "@/components/forms";
+import { buttonClass, cardClass } from "@/components/styles";
 import { deleteChild } from "./actions";
 import { AddChildForm, CreateFamilyForm } from "./forms";
 
@@ -13,11 +14,14 @@ export default async function OnboardingPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-8 px-4 py-10">
-      <ol className="flex gap-2 text-xs font-medium text-muted">
-        <li className={!family ? "text-accent" : ""}>1. 가족 만들기</li>
-        <li aria-hidden>›</li>
-        <li className={family ? "text-accent" : ""}>2. 아이 등록</li>
-      </ol>
+      <div className="flex items-center justify-between">
+        <ol className="flex gap-2 text-xs font-medium text-muted">
+          <li className={!family ? "text-accent" : ""}>1. 가족 만들기</li>
+          <li aria-hidden>›</li>
+          <li className={family ? "text-accent" : ""}>2. 아이 등록</li>
+        </ol>
+        <LogoutButton />
+      </div>
 
       {!family ? (
         <section className="flex flex-col gap-4">
@@ -40,7 +44,7 @@ export default async function OnboardingPage() {
               {children.map((child) => (
                 <li
                   key={child.id}
-                  className="flex items-center justify-between rounded-xl border border-foreground/10 px-4 py-3"
+                  className={`${cardClass} flex items-center justify-between`}
                 >
                   <span>
                     <span className="font-medium">{child.nickname}</span>
@@ -48,12 +52,7 @@ export default async function OnboardingPage() {
                       <span className="ml-2 text-sm text-muted">{child.birth_month.replace("-", "년 ")}월생</span>
                     )}
                   </span>
-                  <form action={deleteChild}>
-                    <input type="hidden" name="id" value={child.id} />
-                    <button type="submit" className="px-2 text-sm text-muted" aria-label={`${child.nickname} 삭제`}>
-                      삭제
-                    </button>
-                  </form>
+                  <DeleteButton action={deleteChild} id={child.id} label={`${child.nickname} 삭제`} />
                 </li>
               ))}
             </ul>
