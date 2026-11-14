@@ -29,3 +29,6 @@ description: Run book-history (Next.js + Supabase) locally and drive the login �
 ## Selector gotchas
 - Next's route announcer is also `role=alert` → scope to `main [role=alert]`.
 - Child rows have their own `삭제` submit buttons → click buttons by accessible name, never `button[type=submit]`.
+- Tampering probes (editing hidden inputs / checkbox values in the DOM): `waitForLoadState("networkidle")` first —
+  before hydration React silently restores the original values — and log `new FormData(form)` to prove what was sent.
+- After a server-action click, wait for the UI to change before closing the browser, or the request may be aborted.
