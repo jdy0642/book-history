@@ -11,6 +11,13 @@ description: Run book-history (Next.js + Supabase) locally and drive the login �
 - The user often has `npm run dev` running on :3000 — check `curl -s -o /dev/null -w "%{http_code}" localhost:3000/login` first and reuse it.
 - **Don't run `npm run build` or a second `next dev` while the user's dev server is up** — they share `.next/` and corrupt it (symptom: edge chunk `Cannot read properties of undefined (reading 'indexOf')`). Fix: stop server, `rm -rf .next`, restart.
 - `.env.local` needs `NEXT_PUBLIC_SUPABASE_URL` = `https://<ref>.supabase.co` (no `/rest/v1/` suffix) and the publishable key.
+- **Production-only behavior** (metadata placement, static/SSG routes, cache headers, PWA installability) differs from
+  `next dev`. Build an isolated copy so the user's `.next/` is untouched:
+  `rsync -a --exclude .next --exclude node_modules --exclude .git ./ <scratch>/buildcheck/` then
+  `cp -cR node_modules <scratch>/buildcheck/` (APFS clone; Turbopack rejects a symlinked node_modules),
+  `npm run build`, `npx next start -p 3200`, and `pkill -f "next start -p 3200"` when done.
+- PWA installability: use `chromium.launchPersistentContext` (a normal context is incognito → `in-incognito`) and CDP
+  `Page.getInstallabilityErrors` / `Page.getAppManifest`.
 
 ## Drive (GUI)
 - No Playwright browsers installed; use system Chrome via `playwright-core` installed in the scratchpad:
