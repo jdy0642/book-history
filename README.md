@@ -27,6 +27,7 @@ npm run dev                  # http://localhost:3000
    - `20261108000000_init.sql` — 테이블 + RLS
    - `20261115000000_log_rpcs_and_kakao_books.sql` — 기록 저장/수정 함수, 카카오 책 저장 함수
    - `20261116000000_family_invites.sql` — 한 계정 한 가족, 초대 미리보기, 함수 실행 권한 정리
+   - `20261117000000_one_family_per_user.sql` — 한 계정 한 가족을 DB 유니크 제약으로 보장
 4. 카카오 책 검색: https://developers.kakao.com 에서 앱을 만들고 **REST API 키**를 `.env.local` 의 `KAKAO_REST_API_KEY` 에 넣기
    (Vercel 에는 Type 을 **Secret** 으로)
 5. `npm run dev` 재시작 → http://localhost:3000 에서 로그인 화면이 보이면 성공
