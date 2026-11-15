@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/auth";
 import { hintClass } from "@/components/styles";
+import { FormMessage } from "@/components/ui";
 import { safeNext } from "@/lib/url";
 import { AuthForm } from "./auth-form";
 
@@ -9,7 +11,7 @@ export const metadata = { title: "로그인" };
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; next?: string }>;
+  searchParams: Promise<{ error?: string; next?: string; deleted?: string }>;
 }) {
   const params = await searchParams;
   const next = params.next ? safeNext(params.next) : undefined;
@@ -23,6 +25,8 @@ export default async function LoginPage({
         <h1 className="mt-3 text-2xl font-bold">책 읽어준 날</h1>
         <p className="mt-1 text-muted">아이에게 읽어준 책을 10초 만에 기록해요.</p>
       </header>
+
+      {params.deleted && <FormMessage message="탈퇴가 끝났어요. 그동안 이용해 주셔서 고마워요." />}
 
       {next?.startsWith("/invite/") && (
         <p className={`${hintClass} text-center`}>
@@ -38,6 +42,11 @@ export default async function LoginPage({
             : undefined
         }
       />
+
+      <p className="text-center text-xs text-muted">
+        가입하면 <Link href="/terms" className="underline">이용약관</Link>과{" "}
+        <Link href="/privacy" className="underline">개인정보처리방침</Link>에 동의하게 돼요.
+      </p>
     </main>
   );
 }

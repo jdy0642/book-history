@@ -1,5 +1,6 @@
+import Link from "next/link";
 import { ChildList } from "@/components/child-list";
-import { DeleteButton } from "@/components/forms";
+import { DeleteButton, LogoutButton } from "@/components/forms";
 import { InstallCard } from "@/components/install-card";
 import { cardClass } from "@/components/styles";
 import { requireFamily } from "@/lib/auth";
@@ -73,6 +74,28 @@ export default async function FamilyPage() {
         <ChildList items={family.children} />
         <AddChildForm isFirst={false} />
       </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="font-semibold">내 데이터</h2>
+        <a href="/api/export" download className={`${cardClass} flex items-center justify-between`}>
+          <span>
+            <span className="block font-medium">읽기 기록 내려받기</span>
+            <span className="block text-sm text-muted">우리 가족 기록 전체를 엑셀에서 열 수 있는 CSV 파일로</span>
+          </span>
+          <span aria-hidden>⬇︎</span>
+        </a>
+      </section>
+
+      <footer className="flex flex-col items-center gap-3 pb-4 text-sm text-muted">
+        <LogoutButton />
+        <nav className="flex gap-4">
+          <Link href="/terms">이용약관</Link>
+          <Link href="/privacy" className="font-semibold">
+            개인정보처리방침
+          </Link>
+          <Link href="/account/delete">회원 탈퇴</Link>
+        </nav>
+      </footer>
     </main>
   );
 }
