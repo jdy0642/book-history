@@ -6,6 +6,9 @@ export const inputClass =
 export const buttonClass =
   "w-full rounded-xl bg-accent px-4 py-3 text-base font-semibold text-white disabled:opacity-60";
 
+export const dangerButtonClass =
+  "w-full rounded-xl bg-red-600 px-4 py-3 text-base font-semibold text-white disabled:opacity-60";
+
 export const secondaryButtonClass =
   "w-full rounded-xl border border-foreground/15 px-4 py-3 text-base font-medium disabled:opacity-60";
 

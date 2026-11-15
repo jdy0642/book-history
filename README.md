@@ -28,6 +28,9 @@ npm run dev                  # http://localhost:3000
    - `20261115000000_log_rpcs_and_kakao_books.sql` — 기록 저장/수정 함수, 카카오 책 저장 함수
    - `20261116000000_family_invites.sql` — 한 계정 한 가족, 초대 미리보기, 함수 실행 권한 정리
    - `20261117000000_one_family_per_user.sql` — 한 계정 한 가족을 DB 유니크 제약으로 보장
+   - `20261118000000_account_deletion.sql` — 회원 탈퇴 (가족을 만든 사람이 탈퇴해도 남은 가족의 기록 유지)
+   - `20261119000000_family_member_cleanup.sql` — 구성원이 빠질 때 정리 규칙(마지막 구성원이면 가족 삭제, 만든 사람 승계)을 트리거로
+   - `20261120000000_user_fk_indexes.sql` — 탈퇴가 사용자 수에 따라 느려지지 않도록 외래 키 인덱스
 4. 카카오 책 검색: https://developers.kakao.com 에서 앱을 만들고 **REST API 키**를 `.env.local` 의 `KAKAO_REST_API_KEY` 에 넣기
    (Vercel 에는 Type 을 **Secret** 으로)
 5. `npm run dev` 재시작 → http://localhost:3000 에서 로그인 화면이 보이면 성공
