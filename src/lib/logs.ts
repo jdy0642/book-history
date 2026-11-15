@@ -18,17 +18,25 @@ export type ReadingLog = {
   child_ids: string[];
 };
 
-type Row = Omit<ReadingLog, "book" | "child_ids"> & {
-  books: Book;
+/** 내보내기용: 출판사·ISBN 까지 */
+type FullReadingLog = Omit<ReadingLog, "book"> & {
+  book: Book & { isbn: string | null; publisher: string | null };
+};
+
+type Row<B = Book> = Omit<ReadingLog, "book" | "child_ids"> & {
+  books: B;
   reading_log_children: { child_id: string }[];
 };
 
-const LOG_SELECT =
-  "id, read_on, memo, reaction, reader_user_id, books(id, title, authors, cover_url), reading_log_children(child_id)";
+const LOG_COLUMNS = "id, read_on, memo, reaction, reader_user_id, reading_log_children(child_id)";
+const LOG_SELECT = `${LOG_COLUMNS}, books(id, title, authors, cover_url)`;
+const FULL_LOG_SELECT = `${LOG_COLUMNS}, books(id, title, authors, cover_url, isbn, publisher)`;
 
-function toLog({ books, reading_log_children, ...log }: Row): ReadingLog {
+function toLog<B>({ books, reading_log_children, ...log }: Row<B>) {
   return { ...log, book: books, child_ids: reading_log_children.map((c) => c.child_id) };
 }
+
+const PAGE = 1000; // Supabase 가 한 번에 돌려주는 최대 행 수
 
 // 아래 조회는 모두 RLS 로 내 가족 기록만 돌려받는다
 
@@ -61,6 +69,24 @@ export async function getLogsBetween(
     .returns<Row[]>();
   if (error) throw error;
   return (data ?? []).map(toLog);
+}
+
+/** 우리 가족 기록 전체 (오래된 날짜부터). 1000행씩 나눠 받는다 */
+export async function getAllLogs(supabase: SupabaseClient): Promise<FullReadingLog[]> {
+  const logs: FullReadingLog[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from("reading_logs")
+      .select(FULL_LOG_SELECT)
+      .order("read_on")
+      .order("created_at")
+      .order("id") // 같은 시각이어도 페이지 경계에서 순서가 바뀌지 않게
+      .range(from, from + PAGE - 1)
+      .returns<Row<FullReadingLog["book"]>[]>();
+    if (error) throw error;
+    for (const row of data) logs.push(toLog(row));
+    if (data.length < PAGE) return logs;
+  }
 }
 
 export async function getLog(supabase: SupabaseClient, id: string): Promise<ReadingLog | null> {
