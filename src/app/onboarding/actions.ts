@@ -5,14 +5,22 @@ import { getMyFamily, requireUser } from "@/lib/auth";
 import { isMonthString } from "@/lib/date";
 import { friendlyDbError } from "@/lib/errors";
 import type { FormState } from "@/lib/form";
+import { DISPLAY_NAME_ERROR, isValidDisplayName, updateDisplayName } from "@/lib/profile";
 import { createClient } from "@/lib/supabase/server";
 
 export async function createFamily(_prev: FormState, formData: FormData): Promise<FormState> {
   const name = String(formData.get("name") ?? "").trim();
-  const fail = (error: string): FormState => ({ error, values: { name } });
+  // 호칭 칸은 카카오로 가입한 경우에만 있다 (이메일 가입은 가입할 때 받는다)
+  const displayName = formData.has("display_name") ? String(formData.get("display_name")).trim() : null;
+  const fail = (error: string): FormState => ({ error, values: { name, display_name: displayName ?? "" } });
+  if (displayName !== null && !isValidDisplayName(displayName)) return fail(DISPLAY_NAME_ERROR);
   if (!name || name.length > 30) return fail("가족 이름을 1~30자로 입력해 주세요.");
 
-  const { supabase } = await requireUser();
+  const { supabase, user } = await requireUser();
+  if (displayName !== null) {
+    const { error } = await updateDisplayName(supabase, user.id, displayName);
+    if (error) return fail(friendlyDbError("호칭을 저장하지 못했어요", error));
+  }
   const { error } = await supabase.rpc("create_family", { family_name: name });
   if (error?.code === "P0003") return fail("이미 가족이 있어요."); // DB 가 "한 계정 한 가족"을 확인한다
   if (error) return fail(friendlyDbError("가족을 만들지 못했어요", error));

@@ -8,6 +8,11 @@ import { AuthForm } from "./auth-form";
 
 export const metadata = { title: "로그인" };
 
+const ERRORS: Record<string, string> = {
+  confirm: "확인 링크가 만료됐거나 올바르지 않아요. 다시 로그인하거나 가입해 주세요.",
+  kakao: "카카오 로그인을 마치지 못했어요. 다시 시도해 주세요.",
+};
+
 export default async function LoginPage({
   searchParams,
 }: {
@@ -30,17 +35,13 @@ export default async function LoginPage({
 
       {next?.startsWith("/invite/") && (
         <p className={`${hintClass} text-center`}>
-          가족 초대를 받았어요. 처음이면 <b>회원가입</b>, 계정이 있으면 로그인해 주세요.
+          가족 초대를 받았어요. <b>카카오로 시작</b>하거나, 이메일로 가입·로그인해 주세요.
         </p>
       )}
 
       <AuthForm
         next={next}
-        initialError={
-          params.error === "confirm"
-            ? "확인 링크가 만료됐거나 올바르지 않아요. 다시 로그인하거나 가입해 주세요."
-            : undefined
-        }
+        initialError={params.error && Object.hasOwn(ERRORS, params.error) ? ERRORS[params.error] : undefined}
       />
 
       <p className="text-center text-xs text-muted">

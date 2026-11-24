@@ -2,7 +2,8 @@
 
 import { useFormStatus } from "react-dom";
 import type { FormState } from "@/lib/form";
-import { buttonClass } from "./styles";
+import { DISPLAY_NAME_MAX } from "@/lib/profile";
+import { buttonClass, inputClass } from "./styles";
 
 /** 폼 제출 중이면 비활성화되는 버튼 */
 export function SubmitButton({
@@ -38,4 +39,26 @@ export function FormMessage({ error, message }: Pick<NonNullable<FormState>, "er
     );
   }
   return null;
+}
+
+/** 가족 안에서의 호칭 입력칸 (가입·온보딩·가족 관리에서 같이 쓴다) */
+export function DisplayNameInput({
+  defaultValue,
+  placeholder = "예: 아빠, 엄마, 할머니",
+  className = inputClass,
+}: {
+  defaultValue?: string;
+  placeholder?: string;
+  className?: string;
+}) {
+  return (
+    <input
+      name="display_name"
+      required
+      maxLength={DISPLAY_NAME_MAX}
+      placeholder={placeholder}
+      defaultValue={defaultValue}
+      className={className}
+    />
+  );
 }

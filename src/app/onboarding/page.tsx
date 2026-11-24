@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getMyFamily, requireUser } from "@/lib/auth";
+import { getFamilyNames } from "@/lib/logs";
 import { ChildList } from "@/components/child-list";
 import { LogoutButton } from "@/components/forms";
 import { buttonClass, hintClass } from "@/components/styles";
@@ -8,8 +9,13 @@ import { AddChildForm, CreateFamilyForm } from "./forms";
 export const metadata = { title: "시작하기" };
 
 export default async function OnboardingPage() {
-  const { supabase } = await requireUser();
-  const family = await getMyFamily(supabase);
+  const { supabase, user } = await requireUser();
+  // 카카오 가입은 호칭을 따로 묻지 않았으므로(처음엔 카카오 닉네임) 여기서 정하게 한다
+  const [family, names] = await Promise.all([
+    getMyFamily(supabase),
+    user.app_metadata.provider === "kakao" ? getFamilyNames(supabase) : undefined,
+  ]);
+  const displayName = names && (names.get(user.id) ?? "");
   const children = family?.children ?? [];
 
   return (
@@ -32,7 +38,7 @@ export default async function OnboardingPage() {
               가족에게 <b>초대 링크</b>를 받았다면, 가족을 새로 만들지 말고 그 링크를 열어 주세요.
             </p>
           </div>
-          <CreateFamilyForm />
+          <CreateFamilyForm displayName={displayName} />
         </section>
       ) : (
         <section className="flex flex-col gap-4">

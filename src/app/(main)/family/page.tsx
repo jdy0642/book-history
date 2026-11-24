@@ -9,6 +9,7 @@ import { getActiveInvites, getMembers } from "@/lib/family";
 import { getFamilyNames } from "@/lib/logs";
 import { AddChildForm } from "../../onboarding/forms";
 import { deleteInvite } from "./actions";
+import { DisplayNameForm } from "./display-name-form";
 import { CreateInviteButton, ShareInviteLink } from "./invite-controls";
 
 export const metadata = { title: "가족 관리" };
@@ -44,6 +45,7 @@ export default async function FamilyPage() {
             </li>
           ))}
         </ul>
+        <DisplayNameForm current={names.get(user.id) ?? ""} />
       </section>
 
       <section className="flex flex-col gap-3">

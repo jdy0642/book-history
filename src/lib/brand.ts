@@ -12,4 +12,4 @@ export const OPERATOR = {
   name: "주동엽",
   email: "jdy0642@gmail.com",
 };
-export const LEGAL_EFFECTIVE_DATE = "2026년 11월 15일";
+export const LEGAL_EFFECTIVE_DATE = "2026년 11월 22일";

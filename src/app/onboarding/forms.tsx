@@ -1,14 +1,21 @@
 "use client";
 
 import { useActionState } from "react";
-import { FormMessage, SubmitButton } from "@/components/ui";
+import { DisplayNameInput, FormMessage, SubmitButton } from "@/components/ui";
 import { inputClass, secondaryButtonClass } from "@/components/styles";
 import { addChild, createFamily } from "./actions";
 
-export function CreateFamilyForm() {
+/** displayName: 카카오로 가입한 경우 호칭(처음엔 카카오 닉네임)도 함께 정한다 */
+export function CreateFamilyForm({ displayName }: { displayName?: string }) {
   const [state, action] = useActionState(createFamily, undefined);
   return (
     <form action={action} className="flex flex-col gap-3">
+      {displayName !== undefined && (
+        <label className="flex flex-col gap-1 text-sm text-muted">
+          가족 안에서의 내 호칭
+          <DisplayNameInput defaultValue={state?.values?.display_name ?? displayName} />
+        </label>
+      )}
       <input
         name="name"
         required

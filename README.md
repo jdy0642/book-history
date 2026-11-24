@@ -48,6 +48,22 @@ npm run dev                  # http://localhost:3000
 3. 개발 중 메일 확인을 건너뛰려면 **Authentication → Sign In / Providers → Email → Confirm email** 끄기
    (공개 전에는 다시 켜기)
 
+## 카카오 로그인 설정
+
+1. https://developers.kakao.com → 내 애플리케이션 → (책 검색에 쓰는 앱과 같은 앱이어도 됨)
+   - **카카오 로그인 → 활성화 ON**
+   - **카카오 로그인 → Redirect URI**: `https://<프로젝트 ref>.supabase.co/auth/v1/callback`
+   - **카카오 로그인 → 동의항목**: 닉네임(필수), 프로필 사진(선택), 카카오계정(이메일)(선택)
+     — Supabase 는 이 세 항목을 항상 요청하므로 셋 다 설정돼 있어야 한다 (없으면 KOE205 에러).
+     이메일 항목은 **비즈 앱** 전환(개인 개발자도 가능) 후 설정할 수 있다.
+   - **앱 → 플랫폼 키 → REST API 키**의 **클라이언트 시크릿** 코드 발급·활성화
+2. Supabase **Authentication → Sign In / Providers → Kakao**
+   - Enable, REST API 키 → `Client ID`, 클라이언트 시크릿 → `Client Secret`
+   - **Allow users without an email** 켜기 (이메일 제공에 동의하지 않은 사용자도 가입되도록)
+3. 돌아오는 주소(`/auth/confirm`)는 위 **Redirect URLs** 의 `/**` 에 포함된다
+
+로그인 화면의 **로그인 상태 유지**(기본 켬)를 끄면 로그인 쿠키를 세션 쿠키로 써서 브라우저를 닫을 때 로그아웃된다.
+
 화면 흐름: `/login` (로그인·회원가입) → `/onboarding` (가족 만들기 → 아이 등록) → `/` (홈)
 
 ## Vercel 배포하기
